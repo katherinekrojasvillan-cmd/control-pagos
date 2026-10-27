@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestor de Pagos y Recordatorios</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#0f172a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    /* Smooth transitions */
+    .transition-all-custom {
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.4);
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-300">
+
+  <!-- Header / Navigation -->
+  <header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 lg:px-8 py-3.5 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="p-2 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/30">
+        <i data-lucide="calendar-clock" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+          Gestor de Pagos
+        </h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:block">Recordatorio mensual recurrente</p>
+      </div>
+    </div>
+
+    <!-- Actions & Controls -->
+    <div class="flex items-center space-x-2 sm:space-x-4">
+      <!-- Current Month Badge -->
+      <div class="hidden md:flex items-center space-x-2 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-300">
+        <i data-lucide="calendar" class="w-4 h-4 text-blue-500"></i>
+        <span id="current-month-display">Cargando...</span>
+      </div>
+
+      <!-- Notifications Toggle Button -->
+      <button id="notify-btn" onclick="toggleNotifications()" title="Activar notificaciones"
+        class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all-custom relative">
+        <i data-lucide="bell" class="w-5 h-5"></i>
+        <span id="notify-dot" class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full hidden"></span>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all-custom" title="Cambiar tema">
+        <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+        <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
+      </button>
+
+      <!-- Add New Item Button -->
+      <button onclick="openModal()" class="flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-xl shadow-lg shadow-blue-600/20 transition-all-custom active:scale-95 text-sm">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        <span class="hidden sm:inline">Nuevo Registro</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Banner de Notificaciones / Alertas Próximas -->
+  <div id="alerts-container" class="max-w-7xl mx-auto w-full px-4 pt-4 hidden"></div>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Metrics / Summary Cards -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Total General Card -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:shadow-md transition-all-custom flex items-center justify-between">
+        <div class="space-y-1">
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Mensual</p>
+          <p id="total-general" class="text-2xl font-bold text-slate-900 dark:text-white">Bs. 0</p>
+          <p class="text-xs text-slate-400" id="total-general-sub">Presupuesto programado</p>
+        </div>
+        <div class="p-3 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 rounded-2xl">
+          <i data-lucide="wallet" class="w-6 h-6"></i>
+        </div>
+      </div>
+
+      <!-- Sucursales Total Card -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:shadow-md transition-all-custom flex items-center justify-between">
+        <div class="space-y-1">
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Sucursales</p>
+          <p id="total-sucursales" class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">Bs. 0</p>
+          <p class="text-xs text-slate-400" id="sucursales-count">0 items</p>
+        </div>
+        <div class="p-3 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-2xl">
+          <i data-lucide="building-2" class="w-6 h-6"></i>
+        </div>
+      </div>
+
+      <!-- Sueldos Total Card -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:shadow-md transition-all-custom flex items-center justify-between">
+        <div class="space-y-1">
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Sueldos</p>
+          <p id="total-sueldos" class="text-2xl font-bold text-violet-600 dark:text-violet-400">Bs. 0</p>
+          <p class="text-xs text-slate-400" id="sueldos-count">0 personas</p>
+        </div>
+        <div class="p-3 bg-violet-50 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400 rounded-2xl">
+          <i data-lucide="users" class="w-6 h-6"></i>
+        </div>
+      </div>
+
+      <!-- Progreso del Mes -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:shadow-md transition-all-custom flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-2">
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Progreso Pagado</p>
+          <span id="progress-percent" class="text-xs font-bold text-blue-600 dark:text-blue-400">0%</span>
+        </div>
+        <div>
+          <div class="w-full bg-slate-100 dark:bg-slate-800 h-3 rounded-full overflow-hidden">
+            <div id="progress-bar" class="bg-blue-600 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <div class="flex justify-between items-center text-xs text-slate-400 mt-2">
+            <span id="paid-amount">Pagado: Bs. 0</span>
+            <span id="pending-amount">Pendiente: Bs. 0</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Toolbar: Tabs, Search & Reset -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm">
+      
+      <!-- Filter Tabs -->
+      <div class="flex flex-wrap items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
+        <button onclick="setFilter('all')" id="tab-all" class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-lg transition-all-custom bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm">
+          Todos (<span id="count-all">0</span>)
+        </button>
+        <button onclick="setFilter('Sucursal')" id="tab-Sucursal" class="tab-btn px-3 py-1.5 text-xs font-medium rounded-lg transition-all-custom text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+          Sucursales (<span id="count-sucursal">0</span>)
+        </button>
+        <button onclick="setFilter('Sueldo')" id="tab-Sueldo" class="tab-btn px-3 py-1.5 text-xs font-medium rounded-lg transition-all-custom text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+          Sueldos (<span id="count-sueldo">0</span>)
+        </button>
+        <button onclick="setFilter('pending')" id="tab-pending" class="tab-btn px-3 py-1.5 text-xs font-medium rounded-lg transition-all-custom text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+          Pendientes
+        </button>
+      </div>
+
+      <!-- Controls Right: Search & Reset -->
+      <div class="flex items-center gap-2">
+        <div class="relative flex-1 sm:w-64">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input type="text" id="search-input" oninput="renderApp()" placeholder="Buscar por nombre..."
+            class="w-full pl-9 pr-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-100 placeholder-slate-400">
+        </div>
+        <button onclick="resetCurrentMonthStatus()" title="Reiniciar estados de este mes"
+          class="p-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl transition-all-custom flex items-center space-x-1 text-xs font-medium">
+          <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+          <span class="hidden lg:inline">Reiniciar Mes</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main List & Calendar Grid Container -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- List Column (2 Cols wide on desktop) -->
+      <div class="lg:col-span-2 space-y-4">
+        <div class="flex items-center justify-between px-1">
+          <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <i data-lucide="list-todo" class="w-5 h-5 text-blue-500"></i>
+            Lista Ordenada por Proximidad
+          </h2>
+          <span class="text-xs text-slate-400">Actualizado automáticamente</span>
+        </div>
+
+        <div id="payments-list" class="space-y-3">
+          <!-- Items populated via JavaScript -->
+        </div>
+      </div>
+
+      <!-- Calendar / Timeline Overview Side Panel -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between px-1">
+          <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <i data-lucide="calendar-days" class="w-5 h-5 text-indigo-500"></i>
+            Calendario Mensual
+          </h2>
+        </div>
+
+        <!-- Mini Calendar Card -->
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-4">
+          <!-- Month Header -->
+          <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+            <span id="calendar-month-title" class="font-bold text-sm text-slate-800 dark:text-slate-200"></span>
+            <span class="text-xs font-medium px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300" id="today-badge">Hoy: Día --</span>
+          </div>
+
+          <!-- Calendar Grid Days Header -->
+          <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <div>Dom</div><div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div>
+          </div>
+
+          <!-- Days Grid -->
+          <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-xs">
+            <!-- Rendered by JS -->
+          </div>
+
+          <!-- Legend -->
+          <div class="pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Pagado
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Próximo (3 días)
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> Vencido / Hoy
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700 inline-block"></span> Pendiente
+            </div>
+          </div>
+        </div>
+
+        <!-- System restore default data box -->
+        <div class="bg-slate-100 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
+          <div>
+            <p class="font-semibold text-slate-700 dark:text-slate-300">¿Restablecer datos base?</p>
+            <p>Restaura la lista original de la planilla.</p>
+          </div>
+          <button onclick="restoreDefaults()" class="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-all-custom">
+            Restaurar
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-200 dark:border-slate-800 py-4 text-center text-xs text-slate-400 mt-auto">
+    <p>Sistema de Gestión de Pagos Mensuales • Almacenamiento Local Activado</p>
+  </footer>
+
+  <!-- Modal for Adding/Editing Items -->
+  <div id="item-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden transition-opacity duration-200">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 transform transition-transform duration-200 scale-95" id="modal-content">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
+        <h3 id="modal-title" class="text-lg font-bold text-slate-900 dark:text-white">Nuevo Registro</h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="payment-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
+        <input type="hidden" id="item-id">
+
+        <!-- Category/Type Select -->
+        <div>
+          <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">Categoría</label>
+          <select id="item-category" required class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <option value="Sucursal">Sucursal (Gasto / Pago)</option>
+            <option value="Sueldo">Sueldo (Pago a Personal)</option>
+          </select>
+        </div>
+
+        <!-- Name Input -->
+        <div>
+          <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">Nombre / Nombre Personal o Sucursal</label>
+          <input type="text" id="item-name" required placeholder="Ej. 16 de Julio o Marcelo"
+            class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <!-- Day of Month Input -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">Día de Pago (1-31)</label>
+            <input type="number" id="item-day" min="1" max="31" required placeholder="Ej. 15"
+              class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+
+          <!-- Amount Input -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">Monto (Bs.)</label>
+            <input type="number" id="item-amount" min="0" step="any" required placeholder="Ej. 1500"
+              class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+        </div>
+
+        <!-- Dynamic Note / Sync Notice -->
+        <p class="text-xs text-slate-400 italic">Los pagos se programan de manera mensual automática según el día seleccionado.</p>
+
+        <!-- Form Actions -->
+        <div class="flex justify-end space-x-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-all-custom">
+            Cancelar
+          </button>
+          <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium shadow-md shadow-blue-500/20 transition-all-custom">
+            Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
+
+  <!-- Application Logic -->
+  <script>
+    // Initial Default Data structure from Excel screenshot
+    const DEFAULT_PAYMENTS = [
+      // Sucursales
+      { id: '1', name: '16 de Julio', category: 'Sucursal', day: 28, amount: 3788 },
+      { id: '2', name: 'Santiago II', category: 'Sucursal', day: 4, amount: 1500 },
+      { id: '3', name: 'Villa Adela', category: 'Sucursal', day: 8, amount: 2000 },
+      { id: '4', name: 'Miraflores', category: 'Sucursal', day: 6, amount: 2500 },
+      { id: '5', name: 'Obelisco', category: 'Sucursal', day: 1, amount: 0 }, // Obelisco preparado para sincronizar/valor
+
+      // Sueldos
+      { id: '6', name: 'Marcelo', category: 'Sueldo', day: 7, amount: 1500 },
+      { id: '7', name: 'Cassandra', category: 'Sueldo', day: 5, amount: 1350 },
+      { id: '8', name: 'Leo', category: 'Sueldo', day: 15, amount: 1500 },
+      { id: '9', name: 'Javi', category: 'Sueldo', day: 20, amount: 2000 }
+    ];
+
+    // State Variables
+    let payments = [];
+    let paidRecords = {}; // Format: { "YYYY-MM-id": true }
+    let currentFilter = 'all'; // 'all', 'Sucursal', 'Sueldo', 'pending'
+
+    // Get Current Date Info
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-indexed
+    const currentDay = now.getDate();
+
+    const monthNames = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+
+    // Initialize application
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
+      initTheme();
+      updateHeaderDate();
+      renderApp();
+      checkBrowserNotificationsPermission();
+      
+      // Initialize icons
+      lucide.createIcons();
+    });
+
+    // Load from LocalStorage or populate defaults
+    function loadState() {
+      const storedPayments = localStorage.getItem('gestor_pagos_items');
+      const storedPaidRecords = localStorage.getItem('gestor_pagos_records');
+
+      if (storedPayments) {
+        try {
+          payments = JSON.parse(storedPayments);
+        } catch (e) {
+          payments = [...DEFAULT_PAYMENTS];
+        }
+      } else {
+        payments = [...DEFAULT_PAYMENTS];
+        savePayments();
+      }
+
+      if (storedPaidRecords) {
+        try {
+          paidRecords = JSON.parse(storedPaidRecords);
+        } catch (e) {
+          paidRecords = {};
+        }
+      } else {
+        paidRecords = {};
+      }
+    }
+
+    function savePayments() {
+      localStorage.setItem('gestor_pagos_items', JSON.stringify(payments));
+    }
+
+    function savePaidRecords() {
+      localStorage.setItem('gestor_pagos_records', JSON.stringify(paidRecords));
+    }
+
+    function restoreDefaults() {
+      if (confirm('¿Estás seguro de restaurar los datos predeterminados de la planilla original? Esto borrará tus elementos personalizados.')) {
+        payments = [...DEFAULT_PAYMENTS];
+        savePayments();
+        renderApp();
+        showToast('Datos predeterminados restaurados', 'info');
+      }
+    }
+
+    // Header date display
+    function updateHeaderDate() {
+      const monthStr = monthNames[currentMonth];
+      document.getElementById('current-month-display').innerText = `${monthStr} ${currentYear}`;
+      document.getElementById('calendar-month-title').innerText = `${monthStr} ${currentYear}`;
+      document.getElementById('today-badge').innerText = `Hoy: Día ${currentDay}`;
+    }
+
+    // Helper: Check if an item is paid for current month
+    function isItemPaid(id) {
+      const key = `${currentYear}-${currentMonth}-${id}`;
+      return !!paidRecords[key];
+    }
+
+    // Toggle Payment Status
+    function togglePaidStatus(id) {
+      const key = `${currentYear}-${currentMonth}-${id}`;
+      if (paidRecords[key]) {
+        delete paidRecords[key];
+        showToast('Pago marcado como pendiente', 'info');
+      } else {
+        paidRecords[key] = true;
+        showToast('¡Pago registrado con éxito!', 'success');
+      }
+      savePaidRecords();
+      renderApp();
+    }
+
+    function resetCurrentMonthStatus() {
+      if (confirm(`¿Deseas reiniciar el estado de pago de todos los ítems para ${monthNames[currentMonth]}?`)) {
+        Object.keys(paidRecords).forEach(key => {
+          if (key.startsWith(`${currentYear}-${currentMonth}-`)) {
+            delete paidRecords[key];
+          }
+        });
+        savePaidRecords();
+        renderApp();
+        showToast('Estados del mes reiniciados', 'info');
+      }
+    }
+
+    // Main Render Function
+    function renderApp() {
+      renderSummary();
+      renderList();
+      renderCalendar();
+      checkUpcomingNotificationsBanner();
+      lucide.createIcons();
+    }
+
+    // Render Metrics & Totals
+    function renderSummary() {
+      let totalSucursales = 0;
+      let countSucursales = 0;
+      let totalSueldos = 0;
+      let countSueldos = 0;
+      let totalPaid = 0;
+
+      payments.forEach(item => {
+        const amount = Number(item.amount) || 0;
+        const paid = isItemPaid(item.id);
+
+        if (item.category === 'Sucursal') {
+          totalSucursales += amount;
+          countSucursales++;
+        } else if (item.category === 'Sueldo') {
+          totalSueldos += amount;
+          countSueldos++;
+        }
+
+        if (paid) {
+          totalPaid += amount;
+        }
+      });
+
+      const totalGeneral = totalSucursales + totalSueldos;
+      const totalPending = totalGeneral - totalPaid;
+      const progressPercent = totalGeneral > 0 ? Math.round((totalPaid / totalGeneral) * 100) : 0;
+
+      // Update DOM
+      document.getElementById('total-general').innerText = `Bs. ${totalGeneral.toLocaleString()}`;
+      document.getElementById('total-sucursales').innerText = `Bs. ${totalSucursales.toLocaleString()}`;
+      document.getElementById('total-sueldos').innerText = `Bs. ${totalSueldos.toLocaleString()}`;
+
+      document.getElementById('sucursales-count').innerText = `${countSucursales} registros`;
+      document.getElementById('sueldos-count').innerText = `${countSueldos} personas`;
+
+      document.getElementById('progress-percent').innerText = `${progressPercent}%`;
+      document.getElementById('progress-bar').style.width = `${progressPercent}%`;
+
+      document.getElementById('paid-amount').innerText = `Pagado: Bs. ${totalPaid.toLocaleString()}`;
+      document.getElementById('pending-amount').innerText = `Pendiente: Bs. ${totalPending.toLocaleString()}`;
+
+      // Update Filter Counts
+      document.getElementById('count-all').innerText = payments.length;
+      document.getElementById('count-sucursal').innerText = countSucursales;
+      document.getElementById('count-sueldo').innerText = countSueldos;
+    }
+
+    // Calculate proximity score for sorting
+    // Priority: Unpaid upcoming closest to current day -> Unpaid past -> Paid items
+    function getProximityDetails(itemDay) {
+      const diff = itemDay - currentDay;
+      const isPaid = isItemPaid(payments.find(p => p.day === itemDay)?.id);
+
+      let status = 'normal'; // 'due-today', 'upcoming', 'overdue', 'future'
+      let statusText = '';
+      let badgeClass = '';
+
+      if (diff === 0) {
+        status = 'due-today';
+        statusText = 'Vence Hoy';
+        badgeClass = 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 border-rose-200 dark:border-rose-800';
+      } else if (diff > 0 && diff <= 3) {
+        status = 'upcoming';
+        statusText = `En ${diff} día(s)`;
+        badgeClass = 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+      } else if (diff < 0) {
+        status = 'overdue';
+        statusText = `Pasó día ${itemDay}`;
+        badgeClass = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700';
+      } else {
+        status = 'future';
+        statusText = `Día ${itemDay}`;
+        badgeClass = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700';
+      }
+
+      return { diff, status, statusText, badgeClass };
+    }
+
+    // Render Filtered & Sorted Payments List
+    function renderList() {
+      const container = document.getElementById('payments-list');
+      const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+
+      // Filter
+      let filtered = payments.filter(item => {
+        // Search filter
+        if (searchQuery && !item.name.toLowerCase().includes(searchQuery)) {
+          return false;
+        }
+
+        // Category / Status Filter
+        if (currentFilter === 'Sucursal') return item.category === 'Sucursal';
+        if (currentFilter === 'Sueldo') return item.category === 'Sueldo';
+        if (currentFilter === 'pending') return !isItemPaid(item.id);
+
+        return true;
+      });
+
+      // Sort by proximity to current day
+      filtered.sort((a, b) => {
+        const aPaid = isItemPaid(a.id);
+        const bPaid = isItemPaid(b.id);
+
+        // Put paid items at the bottom
+        if (aPaid !== bPaid) return aPaid ? 1 : -1;
+
+        // Otherwise sort by relative day proximity
+        const getRelativeDistance = (day) => {
+          const diff = day - currentDay;
+          if (diff >= 0) return diff; // Upcoming in current month
+          return diff + 32; // Already passed days go after
+        };
+
+        return getRelativeDistance(a.day) - getRelativeDistance(b.day);
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center text-slate-400">
+            <i data-lucide="inbox" class="w-10 h-10 mx-auto mb-2 opacity-50"></i>
+            <p class="font-medium">No se encontraron registros</p>
+            <p class="text-xs mt-1">Intenta cambiar los filtros de búsqueda</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(item => {
+        const paid = isItemPaid(item.id);
+        const diff = item.day - currentDay;
+        
+        let statusTag = '';
+        let borderHighlight = 'border-slate-200/80 dark:border-slate-800/80';
+
+        if (paid) {
+          statusTag = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+            <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Pagado
+          </span>`;
+          borderHighlight = 'border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/20 dark:bg-emerald-950/10';
+        } else if (diff === 0) {
+          statusTag = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200 dark:border-rose-800 animate-pulse">
+            <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> Vence Hoy
+          </span>`;
+          borderHighlight = 'border-rose-300 dark:border-rose-800 bg-rose-50/30 dark:bg-rose-950/20';
+        } else if (diff > 0 && diff <= 3) {
+          statusTag = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+            <i data-lucide="clock" class="w-3.5 h-3.5"></i> En ${diff} día(s)
+          </span>`;
+          borderHighlight = 'border-amber-300 dark:border-amber-800 bg-amber-50/20 dark:bg-amber-950/10';
+        } else {
+          statusTag = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+            Día ${item.day} de cada mes
+          </span>`;
+        }
+
+        const categoryIcon = item.category === 'Sucursal' ? 'building-2' : 'user';
+        const categoryBadgeColor = item.category === 'Sucursal' 
+          ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50' 
+          : 'text-violet-600 bg-violet-50 dark:bg-violet-950/50';
+
+        return `
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border ${borderHighlight} p-4 shadow-sm hover:shadow-md transition-all-custom flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            
+            <!-- Left Info -->
+            <div class="flex items-start sm:items-center space-x-3.5">
+              <!-- Checkbox button -->
+              <button onclick="togglePaidStatus('${item.id}')" title="${paid ? 'Marcar como pendiente' : 'Marcar como pagado'}"
+                class="mt-0.5 sm:mt-0 p-2 rounded-xl transition-all-custom ${paid ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' : 'border-2 border-slate-300 dark:border-slate-700 text-transparent hover:border-blue-500'}">
+                <i data-lucide="check" class="w-5 h-5 ${paid ? 'stroke-[3]' : ''}"></i>
+              </button>
+
+              <div class="space-y-1">
+                <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+                  <span class="p-1 rounded-md ${categoryBadgeColor}">
+                    <i data-lucide="${categoryIcon}" class="w-3.5 h-3.5"></i>
+                  </span>
+                  <h3 class="font-bold text-slate-900 dark:text-white text-base ${paid ? 'line-through text-slate-400 dark:text-slate-500' : ''}">
+                    ${escapeHtml(item.name)}
+                  </h3>
+                  ${statusTag}
+                </div>
+
+                <div class="flex items-center space-x-3 text-xs text-slate-500 dark:text-slate-400">
+                  <span class="flex items-center gap-1">
+                    <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+                    Día ${item.day}
+                  </span>
+                  <span>•</span>
+                  <span>${item.category}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Info & Actions -->
+            <div class="flex items-center justify-between sm:justify-end space-x-4 border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100 dark:border-slate-800">
+              <div class="text-left sm:text-right">
+                <p class="text-lg font-bold text-slate-900 dark:text-white ${paid ? 'text-slate-400 dark:text-slate-500' : ''}">
+                  Bs. ${Number(item.amount).toLocaleString()}
+                </p>
+                <p class="text-[11px] text-slate-400">Monto fijo mensual</p>
+              </div>
+
+              <!-- Action Menu Buttons -->
+              <div class="flex items-center space-x-1">
+                <button onclick="editItem('${item.id}')" title="Editar" class="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all-custom">
+                  <i data-lucide="pencil" class="w-4 h-4"></i>
+                </button>
+                <button onclick="deleteItem('${item.id}')" title="Eliminar" class="p-2 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all-custom">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Render Mini Month Calendar
+    function renderCalendar() {
+      const grid = document.getElementById('calendar-grid');
+      grid.innerHTML = '';
+
+      // Get days in current month
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay(); // 0 = Sun
+
+      // Empty slots for alignment
+      for (let i = 0; i < firstDayIndex; i++) {
+        grid.innerHTML += `<div class="h-8"></div>`;
+      }
+
+      // Render days
+      for (let day = 1; day <= daysInMonth; day++) {
+        const isToday = day === currentDay;
+        
+        // Find payments for this day
+        const dayPayments = payments.filter(p => p.day === day);
+        const hasPayments = dayPayments.length > 0;
+
+        let dayClass = 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800';
+        let badge = '';
+
+        if (isToday) {
+          dayClass += ' ring-2 ring-blue-500 font-bold';
+        }
+
+        if (hasPayments) {
+          const allPaid = dayPayments.every(p => isItemPaid(p.id));
+          const diff = day - currentDay;
+
+          if (allPaid) {
+            badge = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span>`;
+          } else if (diff === 0) {
+            badge = `<span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>`;
+          } else if (diff > 0 && diff <= 3) {
+            badge = `<span class="w-2 h-2 rounded-full bg-amber-500"></span>`;
+          } else {
+            badge = `<span class="w-2 h-2 rounded-full bg-slate-400"></span>`;
+          }
+        }
+
+        const tooltipText = hasPayments 
+          ? dayPayments.map(p => `${p.name}: Bs. ${p.amount}`).join(', ') 
+          : `Día ${day}`;
+
+        grid.innerHTML += `
+          <div title="${escapeHtml(tooltipText)}" class="h-8 flex flex-col items-center justify-center rounded-lg transition-all-custom relative ${dayClass}">
+            <span>${day}</span>
+            <div class="absolute bottom-1">${badge}</div>
+          </div>
+        `;
+      }
+    }
+
+    // Check for urgent upcoming alerts and show top banner
+    function checkUpcomingNotificationsBanner() {
+      const alertContainer = document.getElementById('alerts-container');
+      const urgentPayments = payments.filter(p => {
+        if (isItemPaid(p.id)) return false;
+        const diff = p.day - currentDay;
+        return diff >= 0 && diff <= 3;
+      });
+
+      if (urgentPayments.length === 0) {
+        alertContainer.classList.add('hidden');
+        alertContainer.innerHTML = '';
+        return;
+      }
+
+      const itemsListText = urgentPayments.map(p => `${p.name} (Bs. ${p.amount} - Día ${p.day})`).join(', ');
+
+      alertContainer.classList.remove('hidden');
+      alertContainer.innerHTML = `
+        <div class="bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex items-center justify-between text-amber-800 dark:text-amber-200 shadow-sm">
+          <div class="flex items-center space-x-3">
+            <div class="p-2 bg-amber-500 text-white rounded-xl">
+              <i data-lucide="bell-ring" class="w-5 h-5"></i>
+            </div>
+            <div class="text-xs sm:text-sm">
+              <p class="font-bold">Recordatorio de Pagos Próximos (${urgentPayments.length})</p>
+              <p class="text-amber-700 dark:text-amber-300">${itemsListText}</p>
+            </div>
+          </div>
+          <button onclick="document.getElementById('alerts-container').classList.add('hidden')" class="text-amber-500 hover:text-amber-700 p-1">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      `;
+    }
+
+    // Filter Switcher
+    function setFilter(filter) {
+      currentFilter = filter;
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-white', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+        btn.classList.add('text-slate-600', 'dark:text-slate-400');
+      });
+
+      const activeBtn = document.getElementById(`tab-${filter}`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-white', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+        activeBtn.classList.remove('text-slate-600', 'dark:text-slate-400');
+      }
+
+      renderList();
+    }
+
+    // Modal Handling
+    function openModal(editId = null) {
+      const modal = document.getElementById('item-modal');
+      const form = document.getElementById('payment-form');
+      const modalTitle = document.getElementById('modal-title');
+
+      form.reset();
+      document.getElementById('item-id').value = '';
+
+      if (editId) {
+        const item = payments.find(p => p.id === editId);
+        if (item) {
+          modalTitle.innerText = 'Editar Registro';
+          document.getElementById('item-id').value = item.id;
+          document.getElementById('item-category').value = item.category;
+          document.getElementById('item-name').value = item.name;
+          document.getElementById('item-day').value = item.day;
+          document.getElementById('item-amount').value = item.amount;
+        }
+      } else {
+        modalTitle.innerText = 'Nuevo Registro';
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('item-modal').classList.add('hidden');
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+
+      const id = document.getElementById('item-id').value;
+      const category = document.getElementById('item-category').value;
+      const name = document.getElementById('item-name').value.trim();
+      const day = parseInt(document.getElementById('item-day').value, 10);
+      const amount = parseFloat(document.getElementById('item-amount').value);
+
+      if (!name || isNaN(day) || isNaN(amount)) {
+        showToast('Por favor completa todos los campos correctamente.', 'error');
+        return;
+      }
+
+      if (id) {
+        // Edit Existing
+        const index = payments.findIndex(p => p.id === id);
+        if (index !== -1) {
+          payments[index] = { id, category, name, day, amount };
+          showToast('Registro actualizado', 'success');
+        }
+      } else {
+        // Add New
+        const newId = Date.now().toString();
+        payments.push({ id: newId, category, name, day, amount });
+        showToast('Nuevo registro agregado', 'success');
+      }
+
+      savePayments();
+      closeModal();
+      renderApp();
+    }
+
+    function editItem(id) {
+      openModal(id);
+    }
+
+    function deleteItem(id) {
+      const item = payments.find(p => p.id === id);
+      if (item && confirm(`¿Estás seguro de eliminar "${item.name}"?`)) {
+        payments = payments.filter(p => p.id !== id);
+        savePayments();
+        renderApp();
+        showToast('Registro eliminado', 'info');
+      }
+    }
+
+    // Theme Switcher Logic
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('gestor_pagos_theme', isDark ? 'dark' : 'light');
+    }
+
+    function initTheme() {
+      const savedTheme = localStorage.getItem('gestor_pagos_theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+      }
+    }
+
+    // Browser Notification Support
+    function checkBrowserNotificationsPermission() {
+      const notifyDot = document.getElementById('notify-dot');
+      if ('Notification' in window && Notification.permission === 'granted') {
+        notifyDot.classList.remove('hidden');
+      } else {
+        notifyDot.classList.add('hidden');
+      }
+    }
+
+    function toggleNotifications() {
+      if (!('Notification' in window)) {
+        showToast('Tu navegador no soporta notificaciones de escritorio.', 'error');
+        return;
+      }
+
+      if (Notification.permission === 'granted') {
+        showToast('Las notificaciones de escritorio ya están activadas.', 'info');
+        triggerSystemNotification();
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            checkBrowserNotificationsPermission();
+            showToast('¡Notificaciones activadas con éxito!', 'success');
+            triggerSystemNotification();
+          }
+        });
+      } else {
+        showToast('Notificaciones bloqueadas en la configuración del navegador.', 'error');
+      }
+    }
+
+    function triggerSystemNotification() {
+      const urgent = payments.filter(p => !isItemPaid(p.id) && Math.abs(p.day - currentDay) <= 3);
+      if (urgent.length > 0 && Notification.permission === 'granted') {
+        new Notification('Gestor de Pagos Mensuales', {
+          body: `Tienes ${urgent.length} pagos pendientes para los próximos días.`,
+          icon: 'https://cdn-icons-png.flaticon.com/512/2693/2693507.png'
+        });
+      }
+    }
+
+    // Toast Notification System
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      let bg = 'bg-slate-800 text-white';
+      if (type === 'success') bg = 'bg-emerald-600 text-white';
+      if (type === 'error') bg = 'bg-rose-600 text-white';
+
+      toast.className = `${bg} px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold flex items-center space-x-2 transition-all duration-300 transform translate-y-2 opacity-0`;
+      toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // Utility HTML Escaper
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
